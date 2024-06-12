@@ -1,0 +1,43 @@
+set (versionator_cmd "${CMAKE_CURRENT_LIST_DIR}/versionator")
+
+set (versionator_debug "")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set (versionator_debug_flag "-debug")
+endif()
+
+execute_process( COMMAND ${versionator_cmd} -out version ${versionator_debug_flag}
+                 WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../.."
+		 OUTPUT_VARIABLE APPLICATION_VERSION
+                 OUTPUT_STRIP_TRAILING_WHITESPACE
+                 ERROR_VARIABLE APPLICATION_VERSION_ERR)
+
+execute_process( COMMAND ${versionator_cmd} -out githash ${versionator_debug_flag}
+                 WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../.."
+		 OUTPUT_VARIABLE Git_Commit_Hash
+                 OUTPUT_STRIP_TRAILING_WHITESPACE
+                 ERROR_VARIABLE Git_Commit_Hash_ERR)
+
+if (NOT APPLICATION_VERSION_ERR STREQUAL "")
+	message(FATAL_ERROR "Unable to execute versionator: ${APPLICATION_VERSION_ERR}")
+endif()
+
+if (NOT Git_Commit_Hash_ERR STREQUAL "")
+	message(FATAL_ERROR "Unable to execute versionator: ${Git_Commit_Hash_ERR}")
+endif()
+
+string (TIMESTAMP Build_DT "%Y-%m-%dT%H:%M:%SZ" UTC)
+
+set (APPLICATION_COMMIT "${Git_Commit_Hash}" CACHE INTERNAL "Application commit hash")
+set (APPLICATION_VERSION "${APPLICATION_VERSION}" CACHE INTERNAL "Application version")
+set (APPLICATION_BUILD_DATETIME "${Build_DT}" CACHE INTERNAL "Application build date and time")
+
+message("-- Project version is: ${APPLICATION_VERSION}")
+message("-- Project commit hash is: ${APPLICATION_COMMIT}")
+message("-- Project build date and time is: ${APPLICATION_BUILD_DATETIME}")
+
+set(VERSION_H_OUTFILE "${CMAKE_BINARY_DIR}/inc/dev_version.h")
+
+configure_file(
+	"${CMAKE_CURRENT_LIST_DIR}/version.h.in"
+	"${VERSION_H_OUTFILE}"
+)

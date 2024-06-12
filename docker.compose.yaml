@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  myservice:
+    image: my-zephyr-image
+    container_name: zephyr-os-dev
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"

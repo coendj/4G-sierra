@@ -1,0 +1,11 @@
+/ {
+	aliases {
+		eeprom-0 = &eeprom0;
+		i2c-0 = &i2c0;
+		spi-0 = &spi0;
+		led0 = &led0;
+		rtc = &rtc;
+		uart1 = &uart0;
+	};
+
+};

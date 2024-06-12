@@ -1,0 +1,168 @@
+/dts-v1/;
+#include <st/f4/stm32f407Xg.dtsi>
+#include <st/f4/stm32f407v(e-g)tx-pinctrl.dtsi>
+
+/ {
+	model = "SEGGER STM32F407 Dual Inventive Board";
+	compatible = "vention,dual_inventive_stm32f407";
+
+	chosen {
+		zephyr,console = &usart3;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,ccm = &ccm0;
+		zephyr,canbus = &can1;
+		zephyr,spi = &spi2;
+	};
+
+	aliases {
+		led0 = &led_0_red;
+		led1 = &led_1_green;
+		led2 = &led_2_blue;
+		cansilent = &can_silent;
+		canoff = &can_off;
+		loadswitch0 = &load_switch0;
+		loadswitch1 = &load_switch1;
+		loadswitch2 = &load_switch2;
+		rf1pwr = &rf1_pwr;
+		rf1rst = &rf1_rst;
+		watchdog0 = &iwdg;
+		uart1 = &usart1;
+		uart3 = &usart3;
+		i2c1 = &i2c1;
+		lora0 = &lora;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led_0_red: led_0_red {
+			gpios = <&gpioe 8 GPIO_ACTIVE_HIGH>;
+			label = "LED0";
+		};
+		led_1_green: led_1_green {
+			gpios = <&gpioe 9 GPIO_ACTIVE_HIGH>;
+			label = "LED1";
+		};
+		led_2_blue: led_2_blue {
+			gpios = <&gpioe 10 GPIO_ACTIVE_HIGH>;
+			label = "LED2";
+		};
+	};
+
+	gpios {
+		compatible = "gpio-keys";
+		can_silent: can_silent {
+			gpios = <&gpiod 4 GPIO_ACTIVE_HIGH>;
+		};
+		can_off: can_off {
+			gpios = <&gpiod 3 GPIO_ACTIVE_HIGH>;
+		};
+		load_switch0: load_switch0 {
+			gpios = <&gpioe 0 GPIO_ACTIVE_HIGH>;
+		};
+		load_switch1: load_switch1 {
+			gpios = <&gpioe 1 GPIO_ACTIVE_HIGH>;
+		};
+		load_switch2: load_switch2 {
+			gpios = <&gpioe 2 GPIO_ACTIVE_HIGH>;
+		};
+		rf1_pwr: rf1_pwr {
+			gpios = <&gpiod 10 GPIO_ACTIVE_HIGH>;
+		};
+		rf1_rst: rf1_rst {
+			gpios = <&gpiod 11 GPIO_ACTIVE_HIGH>;
+		};
+	};
+};
+
+&clk_hse {
+	clock-frequency = <DT_FREQ_M(8)>;
+	status = "okay";
+};
+
+&pll {
+	div-m = <8>;
+	mul-n = <336>;
+	div-p = <2>;
+	div-q = <7>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
+&rcc {
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(168)>;
+	ahb-prescaler = <1>;
+	apb1-prescaler = <4>;
+	apb2-prescaler = <2>;
+};
+
+&rtc {
+	status = "okay";
+};
+
+&rng {
+	status = "okay";
+};
+
+&iwdg {
+	status = "okay";
+};
+
+&can1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&can1_rx_pd0 &can1_tx_pd1>;
+	bus-speed = <125000>;
+};
+
+&spi2 {
+	status = "okay";
+	pinctrl-0 = <&spi2_sck_pb13 &spi2_miso_pb14 &spi2_mosi_pb15>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpioa 15 GPIO_ACTIVE_LOW>;
+	lora: lora@0 {
+		compatible = "semtech,sx1276";
+		status = "okay";
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+		label = "sx1276";
+		reset-gpios = <&gpiod 13 (GPIO_ACTIVE_LOW)>;
+		dio-gpios = <&gpiod 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>,
+					<&gpioc 13 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>,
+					<&gpiod 6 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>,
+					<&gpiod 5 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>,
+					<&gpioa 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>,
+					<&gpioa 11 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
+		power-amplifier-output = "pa-boost";
+		tcxo-power-startup-delay-ms = <5>;
+	};
+};
+
+&dma1 {
+	status = "okay";
+};
+
+&usart1 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&usart1_rx_pa10 &usart1_tx_pa9 >;
+	pinctrl-names = "default";
+};
+
+&usart3 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&usart3_tx_pb10 &usart3_rx_pb11>;
+	pinctrl-names = "default";
+};
+
+&i2c1 {	
+	status = "okay";
+	pinctrl-0 = <&i2c1_sda_pb7 &i2c1_scl_pb6>;
+	pinctrl-names = "default";
+	clock-frequency = < I2C_BITRATE_STANDARD >;
+};
+&backup_sram{
+	status = "okay";
+};

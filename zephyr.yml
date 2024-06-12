@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Huawei Inc.
+
+variables:
+  CI_ZEPHYR_MANIFEST_URL: https://github.com/zephyrproject-rtos/zephyr
+  CI_ZEPHYR_MANIFEST_REV: v3.3.0
+  CI_ZEPHYR_SDK_VERSION: 0.15.2
+  CI_ZEPHYR_SDK_TOOLCHAIN: all
+  CI_ZEPHYR_WORKSPACE: zephyrproject
+
+.zephyr:
+  image: ubuntu:22.04
+  stage: build
+  variables:
+    # Keep pip cache in the project directory to allow caching.
+    PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
+    # Do not ask debconf questions when installing packages.
+    DEBIAN_FRONTEND: noninteractive
+    # Cache has mostly pre-compressed files, let's not re-compress them.
+    CACHE_COMPRESSION_LEVEL: "fastest"
+    ARTIFACT_COMPRESSION_LEVEL: "fast"
+    # Cache is fairly large, provide some feedback on transfers.
+    TRANSFER_METER_FREQUENCY: "2s"
+  cache:
+    - key: zephyr-sdk-${CI_ZEPHYR_SDK_VERSION}-linux-x86_64
+      paths:
+        - zephyr-sdk-${CI_ZEPHYR_SDK_VERSION}_*.tar.gz
+      when: always
+      policy: pull
+    - key: west-workspace-${CI_ZEPHYR_MANIFEST_REV}
+      paths:
+        - $CI_ZEPHYR_WORKSPACE
+      when: always
+      policy: pull
+    - key: pip-cache-${CI_ZEPHYR_MANIFEST_REV}
+      paths:
+        - ${CI_PROJECT_DIR}/.cache/pip
+      when: always
+      policy: pull
+  before_script:
+    - echo -e "\e[0K""section_start"":$(date +%s):""install_deps""[collapsed=true]\r\e[0K""Installing distribution dependencies"
+    - echo "force-unsafe-io" > /etc/dpkg/dpkg.cfg.d/force-unsafe-io
+    - apt update
+    - apt install --no-install-recommends -y
+        git cmake ninja-build gperf ccache dfu-util device-tree-compiler wget
+        python3-dev python3-pip python3-setuptools python3-tk python3-wheel
+        xz-utils file make gcc gcc-multilib g++-multilib libsdl2-dev libmagic1
+    - echo -e "\e[0K""section_end"":$(date +%s):""install_deps""\r\e[0K"
+
+    - echo -e "\e[0K""section_start"":$(date +%s):""install_west""[collapsed=true]\r\e[0K""Installing west"
+    - mkdir -p ${CI_PROJECT_DIR}/.cache/pip
+    - pip3 install --user -U west
+    - export "PATH=$HOME/.local/bin:$PATH"
+    - echo -e "\e[0K""section_end"":$(date +%s):""install_west""\r\e[0K"
+
+    - echo -e "\e[0K""section_start"":$(date +%s):""system_info""[collapsed=true]\r\e[0K""Querying system information"
+    - uname -a
+    - test -f /etc/os-release && cat /etc/os-release
+    - cmake --version
+    - python3 --version
+    - dtc --version
+    - env | sort | grep -v '^CI_'
+    - echo -e "\e[0K""section_end"":$(date +%s):""system_info""\r\e[0K"
+
+    - echo -e "\e[0K""section_start"":$(date +%s):""west_init_update""[collapsed=true]\r\e[0K""Initializing and updating west workspace (url=${CI_ZEPHYR_MANIFEST_URL}, revision=${CI_ZEPHYR_MANIFEST_REV})"
+    - test -d "$CI_ZEPHYR_WORKSPACE"
+        || west init "$CI_ZEPHYR_WORKSPACE"
+            --manifest-url "$CI_ZEPHYR_MANIFEST_URL"
+            --manifest-rev "$CI_ZEPHYR_MANIFEST_REV"
+    - ( cd "$CI_ZEPHYR_WORKSPACE" && west update )
+    - ( cd "$CI_ZEPHYR_WORKSPACE" && west zephyr-export )
+    - echo -e "\e[0K""section_end"":$(date +%s):""west_init_update""\r\e[0K"
+
+    - echo -e "\e[0K""section_start"":$(date +%s):""install_more_deps""[collapsed=true]\r\e[0K""Installing extra Python dependencies"
+    - pip3 install --user -r "${CI_ZEPHYR_WORKSPACE}/zephyr/scripts/requirements.txt"
+    - echo -e "\e[0K""section_end"":$(date +%s):""install_more_deps""\r\e[0K"
+
+    - echo -e "\e[0K""section_start"":$(date +%s):""install_zephyr_sdk""[collapsed=true]\r\e[0K""Installing Zephyr SDK (version=${CI_ZEPHYR_SDK_VERSION})"
+    - test -f "zephyr-sdk-${CI_ZEPHYR_SDK_VERSION}_linux-$(uname -m).tar.gz"
+        || wget --quiet "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${CI_ZEPHYR_SDK_VERSION}/zephyr-sdk-${CI_ZEPHYR_SDK_VERSION}_linux-$(uname -m).tar.gz"
+    - tar xf "zephyr-sdk-${CI_ZEPHYR_SDK_VERSION}_linux-$(uname -m).tar.gz"
+    - ( cd "zephyr-sdk-${CI_ZEPHYR_SDK_VERSION}" && ./setup.sh -t "$CI_ZEPHYR_SDK_TOOLCHAIN" -c )
+    - echo -e "\e[0K""section_end"":$(date +%s):""install_zephyr_sdk""\r\e[0K"
+
+    - cd "$CI_ZEPHYR_WORKSPACE"
+
+# To use this job, add a scheduled run of the pipeline to your project.
+# This job will populate caches sed by the .zephyr jobs for regular builds.
+# Suggested frequency is one day.
+#
+# When caches are local and are not shared by runners, this job is useless
+# and should be replaced by cache policy change on the .zephyr job.
+zephyr-cache:
+  extends: .zephyr
+  cache:
+    - key: zephyr-sdk-${CI_ZEPHYR_SDK_VERSION}-linux-x86_64
+      paths:
+        - zephyr-sdk-${CI_ZEPHYR_SDK_VERSION}_*.tar.gz
+      when: always
+    - key: west-workspace-${CI_ZEPHYR_MANIFEST_REV}
+      paths:
+        - $CI_ZEPHYR_WORKSPACE
+    - key: pip-cache-${CI_ZEPHYR_MANIFEST_REV}
+      paths:
+        - ${CI_PROJECT_DIR}/.cache/pip
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    - ":"
+  artifacts:

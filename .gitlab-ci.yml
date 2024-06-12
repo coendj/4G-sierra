@@ -1,0 +1,33 @@
+image: zephyrprojectrtos/ci:v0.26.8
+
+stages:
+  - build
+  - test
+variables:
+  ZEPHYR_BASE: "/builds/$CI_PROJECT_PATH/zephyrproject/zephyr"
+
+before_script:
+  - apt-get update && apt-get install -y --no-install-recommends python3-pip cmake ninja-build g++
+  - pip3 install west
+  - west init -m https://github.com/zephyrproject-rtos/zephyr --mr v3.5.0 zephyrproject
+  - cd zephyrproject
+  - west update
+  - west zephyr-export
+  - pip3 install -r zephyr/scripts/requirements.txt
+  - source zephyr/zephyr-env.sh
+  - cd $CI_PROJECT_DIR
+
+build job:
+  stage: build
+  script:
+    - ls
+    - west build -p auto -b dual_inventive_stm32f407 mesh
+
+test job:
+  stage: test
+  script:
+    - ls
+    - echo "Running unit tests in unit_test_prototype"
+    - cd mesh
+    - west build -p always -b native_posix unit_test_prototype -T sample.testing.unit-tests
+    - west build -t run

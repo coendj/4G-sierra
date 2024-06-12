@@ -1,0 +1,6 @@
+build/
+twister-out/
+twister-out.*/
+.vscode/settings.json
+.env
+passwordfile.txt

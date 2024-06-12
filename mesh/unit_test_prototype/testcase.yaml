@@ -1,0 +1,13 @@
+tests:
+  sample.testing.unit-tests:
+    build_only: true
+    platform_allow: 
+      - native_posix
+      - native_sim
+    integration_platforms:
+      - native_posix
+      - native_sim
+    tags: 
+      - testing
+      - uart
+      - serial
